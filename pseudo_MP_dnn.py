@@ -80,7 +80,7 @@ def metric(prediction, labels):
     
 # DNN class
 class DNN():
-    def __init__(self, layer_sizes, learning_rate):
+    def __init__(self, layer_sizes, learning_rate, mp_instances = None):
         # input size: BS * 1 * 28 * 28
         # layer_size: [28*28, 14*14, 8*8, 10]
         
@@ -89,6 +89,7 @@ class DNN():
         self.num_layers = len(layer_sizes) - 1
         self.weights = []
         self.biases = []
+        self.mp_instances = mp_instances
         
         # Weight와 bias를 list 형태로 저장한 후 각 layer에서 불러오기
         for i in range(self.num_layers):
@@ -226,6 +227,46 @@ class DNN():
         plt.savefig("loss_curve.png")
         plt.clf()
         
+
+class pseudo_MP():
+    def __init__(self, num_of_gpus, model):
+        self.num_of_gpus = num_of_gpus
+        self.model = model
+    
+    def copy_model(self, model):
+        
+        # Multi GPU에 Model을 모두 복사함
+        for gpu in range(self.num_of_gpus):
+            model.to(gpu)
+            
+        return 0
+    
+    def forward_per_gpu(self):
+        # 각 GPU가 sub batch 분량의 data에 forward 연산을 독립적으로 
+        # model의 forward 파트를 불러와서 이용함
+        return 0
+    
+    def communicates_over_gpu(self):
+        # 각 GPU가 계산한 Gradients들을 CPU나 Main host GPU로 전송함
+        # 각 GPU에서 모인 Gradients들을 평균내어서 다시 각 GPU에 전송함
+        return 0
+    
+    def backward_per_gpu(self):
+        # communicates_over_gpu 함수에서 전달받은 forward gradients들을 
+        # 각 GPU에서 각 sub batch 분량의 data에 backward 연산을 독립적으로 연산함
+        # model의 backward 파트를 불러와서 이용함
+        return 0
+    
+    
 model = DNN([28*28, 14*14, 8*8, 10], 0.1)
+
+mp = pseudo_MP(4, model)
+model.mp_instances = mp
+model.mp_instances.copy_model(model)
+model.mp_instances.forward_per_gpu()
+model.mp_instances.communicates_over_gpu()
+model.mp_instances.backward_per_gpu()
+
+# DNN에서 정의한 training loop에 위의 MP를 반영함
 
 model.train(10)
